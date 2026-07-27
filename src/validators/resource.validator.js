@@ -146,9 +146,15 @@ const createManagerValidators = [
   body('password').notEmpty().withMessage('Password is required').isLength({ min: 6 }),
 ];
 
+const createFamilyFromMemberValidators = [
+  body('headMember').isMongoId().withMessage('Valid head member id is required'),
+  ...familyValidators,
+];
+
 module.exports = {
   memberValidators,
   familyValidators,
+  createFamilyFromMemberValidators,
   firmValidators,
   countryValidators,
   stateValidators,

@@ -8,14 +8,54 @@ const {
   deleteResource,
 } = require('./crud.service');
 
-const searchFields = ['name', 'email', 'phone', 'familyName', 'city'];
+const searchFields = ['name', 'surname', 'email', 'phone'];
+
+const memberDisplayName = (member) =>
+  [member.name, member.surname].filter(Boolean).join(' ').trim();
+
+const resolveId = (value) => {
+  if (!value) return null;
+  if (typeof value === 'object' && value._id) return String(value._id);
+  return String(value);
+};
+
+const syncSpouseLink = async (memberId, spouseId, memberName) => {
+  if (!spouseId) return;
+
+  const spouse = await Member.findById(spouseId);
+  if (!spouse) return;
+
+  await Member.findByIdAndUpdate(spouseId, {
+    $set: {
+      spouse: memberId,
+      spouseName: memberName,
+      ...(spouse.maritalStatus ? {} : { maritalStatus: 'married' }),
+    },
+  });
+};
+
+const clearSpouseLinkIfPointsTo = async (memberId, spouseId) => {
+  if (!spouseId) return;
+
+  const spouse = await Member.findById(spouseId);
+  if (!spouse) return;
+
+  if (resolveId(spouse.spouse) === resolveId(memberId)) {
+    await Member.findByIdAndUpdate(spouseId, {
+      $set: { spouse: null, spouseName: '' },
+    });
+  }
+};
 
 const getMembers = async (query) => {
   const filter = {};
 
   if (query.family) filter.family = query.family;
   if (query.gender) filter.gender = query.gender;
-  if (query.maritalStatus) filter.maritalStatus = query.maritalStatus;
+  if (query.maritalStatus) {
+    const statuses = String(query.maritalStatus).split(',').map((status) => status.trim()).filter(Boolean);
+    filter.maritalStatus = statuses.length > 1 ? { $in: statuses } : statuses[0];
+  }
 
   const result = await listResources(Member, {
     query,
@@ -68,11 +108,18 @@ const createMember = async (payload, userId) => {
     }
   }
 
-  return createResource(Member, { ...payload, createdBy: userId });
+  const member = await createResource(Member, { ...payload, createdBy: userId });
+
+  if (payload.spouse) {
+    await syncSpouseLink(member._id, payload.spouse, memberDisplayName(member));
+  }
+
+  return member;
 };
 
 const updateMember = async (id, payload) => {
   const existing = await getMemberById(id);
+  const oldSpouseId = resolveId(existing.spouse);
 
   if (payload.family && String(payload.family) !== String(existing.family?._id || existing.family)) {
     if (existing.family) {
@@ -90,7 +137,22 @@ const updateMember = async (id, payload) => {
     }
   }
 
-  return updateResource(Member, id, payload, { notFoundMessage: 'Member not found' });
+  const member = await updateResource(Member, id, payload, { notFoundMessage: 'Member not found' });
+
+  const hasSpouseInPayload = Object.prototype.hasOwnProperty.call(payload, 'spouse');
+  const newSpouseId = hasSpouseInPayload ? resolveId(payload.spouse) : oldSpouseId;
+
+  if (hasSpouseInPayload && oldSpouseId && oldSpouseId !== newSpouseId) {
+    await clearSpouseLinkIfPointsTo(id, oldSpouseId);
+  }
+
+  if (hasSpouseInPayload && newSpouseId) {
+    await syncSpouseLink(id, newSpouseId, memberDisplayName(member));
+  } else if (hasSpouseInPayload && !newSpouseId && oldSpouseId) {
+    await clearSpouseLinkIfPointsTo(id, oldSpouseId);
+  }
+
+  return member;
 };
 
 const deleteMember = async (id) => {

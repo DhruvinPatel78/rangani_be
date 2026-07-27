@@ -30,6 +30,15 @@ const createFamily = asyncHandler(async (req, res) => {
   });
 });
 
+const createFamilyFromMember = asyncHandler(async (req, res) => {
+  const data = await familyService.createFamilyFromMember(req.body, req.user._id);
+  sendResponse(res, {
+    statusCode: HTTP_STATUS.CREATED,
+    message: 'Family created and members linked successfully',
+    data,
+  });
+});
+
 const updateFamily = asyncHandler(async (req, res) => {
   const data = await familyService.updateFamily(req.params.id, req.body);
   sendResponse(res, {
@@ -52,6 +61,7 @@ module.exports = {
   getFamilies,
   getFamily,
   createFamily,
+  createFamilyFromMember,
   updateFamily,
   deleteFamily,
 };
