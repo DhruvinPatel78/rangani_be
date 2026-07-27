@@ -1,8 +1,17 @@
 require('dotenv').config({ quiet: true });
 
+const normalizeOrigin = (origin) => origin.trim().replace(/\/+$/, '');
+
 const parseClientUrls = (value) => {
   const raw = value || 'http://localhost:5173';
-  return [...new Set(raw.split(',').map((origin) => origin.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      raw
+        .split(',')
+        .map(normalizeOrigin)
+        .filter(Boolean),
+    ),
+  ];
 };
 
 const config = {
