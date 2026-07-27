@@ -1,5 +1,10 @@
 require('dotenv').config({ quiet: true });
 
+const parseClientUrls = (value) => {
+  const raw = value || 'http://localhost:5173';
+  return [...new Set(raw.split(',').map((origin) => origin.trim()).filter(Boolean))];
+};
+
 const config = {
   env: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT) || 5000,
@@ -9,7 +14,7 @@ const config = {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   otpExpirySeconds: Number(process.env.OTP_EXPIRY) || 300,
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrls: parseClientUrls(process.env.CLIENT_URL),
 };
 
 module.exports = config;

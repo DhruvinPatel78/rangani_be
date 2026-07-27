@@ -16,7 +16,14 @@ app.use(helmet({
 }));
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin(origin, callback) {
+      if (!origin || config.clientUrls.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, false);
+    },
     credentials: true,
   }),
 );
