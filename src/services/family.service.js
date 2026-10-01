@@ -10,28 +10,33 @@ const {
   deleteResource,
 } = require('./crud.service');
 
-const getFamilies = (query) =>
-  listResources(Family, {
+const getFamilies = (query) => {
+  const filter = {};
+  if (query.parentFamily) filter.parentFamily = query.parentFamily;
+
+  return listResources(Family, {
     query,
     searchFields: ['name', 'headName', 'city'],
     defaultSort: '-createdAt',
+    filter,
     populate: [
       { path: 'native', select: 'name' },
       { path: 'parentFamily', select: 'name' },
-      { path: 'associatedFirms', select: 'name city' },
+      { path: 'associatedFirms', select: 'name address city countryName stateName districtName' },
       { path: 'country', select: 'name code' },
       { path: 'state', select: 'name' },
       { path: 'district', select: 'name' },
       { path: 'cityRef', select: 'name' },
     ],
   });
+};
 
 const getFamilyById = (id) =>
   getResourceById(Family, id, {
     populate: [
       { path: 'native', select: 'name' },
       { path: 'parentFamily', select: 'name' },
-      { path: 'associatedFirms', select: 'name city' },
+      { path: 'associatedFirms', select: 'name address city countryName stateName districtName' },
       { path: 'country', select: 'name code' },
       { path: 'state', select: 'name' },
       { path: 'district', select: 'name' },
